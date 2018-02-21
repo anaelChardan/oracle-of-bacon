@@ -2,6 +2,7 @@ package com.serli.oracle.of.bacon.repository;
 
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
 import org.bson.Document;
 
 import java.util.Optional;
@@ -14,7 +15,8 @@ public class MongoDbRepository {
     }
 
     public Optional<Document> getActorByName(String name) {
-        // TODO implement actor fetch
-        return null;
+        final Document actor = this.actorCollection.find(Filters.eq("name", name)).first();
+
+        return Optional.ofNullable(actor);
     }
 }
