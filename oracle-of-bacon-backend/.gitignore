@@ -93,5 +93,5 @@ gradle-app.setting
 
 #Noise made by neo4j
 import.report
-/data/imdb-data/*
-!/data/imdb-data/.gitkeep
+/data/neo4j/imdb-data/*
+!/data/neo4j/imdb-data/.gitkeep

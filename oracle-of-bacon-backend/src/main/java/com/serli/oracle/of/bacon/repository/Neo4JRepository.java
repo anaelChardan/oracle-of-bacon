@@ -1,6 +1,7 @@
 package com.serli.oracle.of.bacon.repository;
 
 import org.neo4j.driver.v1.*;
+import org.neo4j.driver.v1.types.Entity;
 import org.neo4j.driver.v1.types.Node;
 import org.neo4j.driver.v1.types.Path;
 import org.neo4j.driver.v1.types.Relationship;
@@ -10,7 +11,10 @@ import static org.neo4j.driver.v1.Values.parameters;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class Neo4JRepository {
     private final Driver driver;
@@ -34,48 +38,42 @@ public class Neo4JRepository {
                 parameters("baconName", baconName, "relatedActorName", actorName)
                 );
 
-        List<Path> paths =  result
+        return result
                 .list()
                 .stream()
-                .flatMap(records -> records.values().stream().map(Value::asPath))
+                .flatMap(record -> record.values().stream().map(Value::asPath))
+                .flatMap(p -> toGraphItems(p).stream())
                 .collect(Collectors.toList());
-
-        List<GraphNode> nodes = paths
-                .stream()
-                .map(path -> iteratorToList(path.nodes().iterator()))
-                .flatMap(ns -> ns.stream().map(this::toGraphNode))
-                .collect(Collectors.toList());
-
-        List<GraphEdge> edges = paths
-                .stream()
-                .map(path -> iteratorToList(path.relationships().iterator()))
-                .flatMap(es -> es.stream().map(this::toGraphEdge))
-                .collect(Collectors.toList());
-
-        List<GraphItem> items = new ArrayList<>(nodes);
-        items.addAll(edges);
-
-        return items;
     }
 
-    private GraphNode toGraphNode(Node n) {
+    private List<GraphItem> toGraphItems(Path path) {
+        List<GraphItem> graphItems = toGraphItem(path.nodes(), this::toGraphItem);
+        graphItems.addAll(toGraphItem(path.relationships(), this::toGraphItem));
+
+        return graphItems;
+    }
+
+    private <T> List<GraphItem> toGraphItem(
+            Iterable<T> iterable,
+            Function<T, GraphItem> toGraphItem) {
+
+        return StreamSupport
+                .stream(iterable.spliterator(), false)
+                .map(toGraphItem)
+                .collect(Collectors.toList());
+    }
+
+    private GraphItem toGraphItem(Node n) {
         String type = n.labels().iterator().next();
         String property = type.equals("Actors") ? "name" : "title";
 
         return new GraphNode(n.id(), n.get(property).asString(), type);
     }
 
-    private GraphEdge toGraphEdge(Relationship relationship) {
+    private GraphItem toGraphItem(Relationship relationship) {
         return new GraphEdge(
                relationship.id(), relationship.startNodeId(), relationship.endNodeId(), relationship.type()
         );
-    }
-
-    private  <T> List<T> iteratorToList(Iterator<T> iterator) {
-        List<T> list = new ArrayList();
-        iterator.forEachRemaining(list::add);
-
-        return list;
     }
 
     public static abstract class GraphItem {

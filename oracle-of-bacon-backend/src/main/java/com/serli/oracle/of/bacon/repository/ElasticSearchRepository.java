@@ -5,6 +5,7 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.suggest.Suggest;
@@ -22,6 +23,8 @@ import java.util.stream.Collectors;
 public class ElasticSearchRepository {
 
     private final RestHighLevelClient client;
+    private final String SUGGEST_FIELD = "suggest";
+    private final String ACTOR_NAME_FIELD = "name";
 
     public ElasticSearchRepository() {
         client = createClient();
@@ -37,10 +40,15 @@ public class ElasticSearchRepository {
     }
 
     public List<String> getActorsSuggests(String searchQuery) throws IOException {
+        String suggestName = "suggest_actor";
+
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        SuggestionBuilder completionSuggestionBuilder = SuggestBuilders.completionSuggestion("suggest").text(searchQuery);
+        SuggestionBuilder completionSuggestionBuilder = SuggestBuilders
+                .completionSuggestion(SUGGEST_FIELD)
+                .prefix(searchQuery, Fuzziness.AUTO);
+
         SuggestBuilder suggestBuilder = new SuggestBuilder();
-        suggestBuilder.addSuggestion("suggest_actor", completionSuggestionBuilder);
+        suggestBuilder.addSuggestion(suggestName, completionSuggestionBuilder);
         searchSourceBuilder.suggest(suggestBuilder);
 
         SearchRequest searchRequest = new SearchRequest();
@@ -48,12 +56,12 @@ public class ElasticSearchRepository {
         SearchResponse searchResponse = client.search(searchRequest);
 
         Suggest suggest = searchResponse.getSuggest();
-        CompletionSuggestion completionSuggestion = suggest.getSuggestion("suggest_actor");
+        CompletionSuggestion completionSuggestion = suggest.getSuggestion(suggestName);
 
         return completionSuggestion
                 .getEntries()
                 .stream().flatMap(
-                        e -> e.getOptions().stream().map(o -> o.getHit().getSourceAsMap().get("name").toString()))
+                        e -> e.getOptions().stream().map(o -> o.getHit().getSourceAsMap().get(ACTOR_NAME_FIELD).toString()))
                 .collect(Collectors.toList());
 
     }
