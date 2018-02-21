@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+  mongo:
+    image: mongo:3.6
+    ports:
+      - 27017:27017
+
+  elasticsearch:
+    build:
+      context: data/elk/elasticsearch/
+    volumes:
+      - ./data/elk/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+
+  logstash:
+    build:
+      context: data/elk/logstash/
+    volumes:
+      - ./data/elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./data/elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5000:5000"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    build:
+      context: data/elk/kibana/
+    volumes:
+      - ./data/elk/kibana/config/:/usr/share/kibana/config:ro
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  redis:
+    image: redis:3.2
+    ports:
+      - 6379:6379
+
+  neo4j:
+    build: ./data/neo4j
+    ports:
+     - 7687:7687
+     - 7474:7474
+    volumes:
+      - ./data/neo4j/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf
+    environment:
+        NEO4J_AUTH: "none"

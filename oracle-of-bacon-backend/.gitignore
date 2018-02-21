@@ -90,3 +90,8 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 
 # End of https://www.gitignore.io/api/gradle,java,intellij
+
+#Noise made by neo4j
+import.report
+/data/imdb-data/*
+!/data/imdb-data/.gitkeep
